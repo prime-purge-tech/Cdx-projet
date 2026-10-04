@@ -69,11 +69,82 @@ textarea{min-height:100px;resize:vertical}
 .sel{margin:16px 0;padding:15px;border-radius:13px;background:rgba(0,234,255,.05);border:1px solid rgba(0,234,255,.25)}.sel span{font-size:10px;color:var(--c)}.sel strong{display:block;margin-top:5px;font-size:20px}
 .notice{position:fixed;left:0;right:0;bottom:0;z-index:99;padding:10px 14px;background:#5b3b00;color:#ffe3a3;font-size:12px;text-align:center}
 .shop{display:block;margin-top:22px;color:#6f86a6;font-size:12px;text-decoration:none;opacity:.8}.shop:hover{color:var(--c);opacity:1}
+
+/* ===== GLASSMORPHISM ===== */
+:root{--glass:rgba(255,255,255,.07);--gb:rgba(255,255,255,.16);--bg:#050c22}
+body{background:linear-gradient(135deg,#040a1f,#0a1f4a 50%,#1a0838);background-attachment:fixed}
+.blobs{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.blobs i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.55;animation:float 16s ease-in-out infinite}
+.blobs i:nth-child(1){width:300px;height:300px;background:#00a2ff;top:-60px;left:-80px}
+.blobs i:nth-child(2){width:340px;height:340px;background:#8c4dff;bottom:-90px;right:-100px;animation-delay:-5s}
+.blobs i:nth-child(3){width:220px;height:220px;background:#ff3fc7;top:45%;left:55%;opacity:.35;animation-delay:-9s}
+@keyframes float{0%,100%{transform:translate(0,0) scale(1)}33%{transform:translate(50px,40px) scale(1.15)}66%{transform:translate(-40px,60px) scale(.9)}}
+.fade{position:fixed;left:0;right:0;height:80px;z-index:40;pointer-events:none}
+.fade.top{top:0;background:linear-gradient(var(--bg),rgba(5,12,34,0))}
+.fade.bot{bottom:0;background:linear-gradient(rgba(5,12,34,0),var(--bg))}
+.page{position:relative;z-index:1;padding:70px 16px}
+.page.active .box{animation:pop .55s cubic-bezier(.2,.9,.3,1.1) both}
+@keyframes pop{from{opacity:0;transform:translateY(24px) scale(.96)}to{opacity:1;transform:none}}
+.box{padding:26px 22px;border-radius:28px;background:linear-gradient(145deg,rgba(255,255,255,.12),rgba(255,255,255,.04));border:1px solid var(--gb);backdrop-filter:blur(22px) saturate(160%);-webkit-backdrop-filter:blur(22px) saturate(160%);box-shadow:0 20px 60px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.25)}
+h1{background:linear-gradient(90deg,#fff,#7df3ff,#c9a5ff,#fff);background-size:250% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:shine 6s linear infinite;text-shadow:none}
+@keyframes shine{to{background-position:-250% 0}}
+.bar{animation:glow 2.5s ease-in-out infinite}@keyframes glow{50%{box-shadow:0 0 30px var(--c);width:110px}}
+.frame{box-shadow:0 0 40px rgba(140,77,255,.35)}
+.quote,.stat,.info div,.id,.sel,.req,.done,.acard,.dc,.mi,.empty{background:var(--glass);border:1px solid var(--gb);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+.mi{border-radius:12px;padding:11px 14px;margin-bottom:8px}
+.done{border-color:rgba(56,255,155,.4)}.acard{border-color:rgba(140,77,255,.5)}
+.req,.done,.acard,.dc,.stat{transition:.3s}.req:hover,.done:hover,.dc:hover,.stat:hover{transform:translateY(-3px);box-shadow:0 12px 30px rgba(0,234,255,.18),inset 0 1px 0 rgba(255,255,255,.2);border-color:var(--c)}
+.id{box-shadow:0 0 30px rgba(0,234,255,.25);animation:pulse 3s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 50px rgba(0,234,255,.5)}}
+input,textarea,select{background:rgba(255,255,255,.07);border:1px solid var(--gb);backdrop-filter:blur(8px)}
+input::placeholder,textarea::placeholder{color:#7f93b3}
+input:focus,textarea:focus,select:focus{background:rgba(255,255,255,.11);box-shadow:0 0 0 3px rgba(0,234,255,.18),0 0 20px rgba(0,234,255,.2)}
+select option{background:#0b2449}
+.btn{position:relative;overflow:hidden;border-radius:16px}
+.btn::after{content:"";position:absolute;top:0;left:-80%;width:50%;height:100%;background:linear-gradient(105deg,transparent,rgba(255,255,255,.45),transparent);transform:skewX(-20deg);transition:.6s}
+.btn:hover::after{left:130%}.btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,234,255,.25)}
+.main{box-shadow:0 0 24px rgba(125,243,255,.35)}
+.out,.adm,.back,.no{background:var(--glass);backdrop-filter:blur(10px)}
+.tab{background:var(--glass);border-color:var(--gb);backdrop-filter:blur(10px);transition:.25s}.tab.on{background:rgba(0,234,255,.14);border-color:var(--c)}
+.badge{background:rgba(140,77,255,.15);backdrop-filter:blur(8px)}
+.online{animation:blink 1.8s infinite}@keyframes blink{50%{opacity:.4}}
+.modal{background:rgba(2,6,20,.7)}
+.mbox{background:linear-gradient(145deg,rgba(255,255,255,.14),rgba(255,255,255,.05));backdrop-filter:blur(26px);border:1px solid var(--gb);box-shadow:0 20px 70px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.25);animation:pop .4s both}
+.hg,.lock{filter:drop-shadow(0 0 18px var(--c))}.lock{animation:float2 3s ease-in-out infinite}@keyframes float2{50%{transform:translateY(-8px)}}
+.shop{opacity:.7}
+.rp{position:absolute;border-radius:50%;background:rgba(255,255,255,.5);transform:scale(0);animation:rp .6s linear;pointer-events:none}
+@keyframes rp{to{transform:scale(4);opacity:0}}
+
+/* ===== ICÔNES, RECUL, CDX ===== */
+.ic{width:1em;height:1em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.14em}
+.ic.xl{width:76px;height:76px;stroke:var(--c);stroke-width:1.5}
+#serrure .ic.xl{stroke:#c8b3ff}
+.btn .ic{margin-right:4px}
+body{zoom:.88}
+.page{min-height:calc(100vh/.88)}
+.cdx{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:0;pointer-events:none;display:flex;font-weight:900;font-style:italic;font-size:min(46vw,300px);line-height:1;letter-spacing:-.04em;white-space:nowrap}
+.cdx span{color:transparent;-webkit-text-stroke:2px rgba(0,234,255,.24);animation:cd 5s ease-in-out infinite,gl 8s infinite}
+.cdx span:nth-child(2){animation-delay:.4s,.1s;-webkit-text-stroke-color:rgba(140,77,255,.3)}
+.cdx span:nth-child(3){animation-delay:.8s,.2s;-webkit-text-stroke-color:rgba(255,63,199,.25)}
+@keyframes cd{0%,100%{opacity:.45;transform:translateY(0)}50%{opacity:1;transform:translateY(-14px);filter:drop-shadow(0 0 18px rgba(0,234,255,.5))}}
+@keyframes gl{0%,91%,100%{translate:0 0}93%{translate:-7px 2px}95%{translate:9px -2px}97%{translate:-4px 0}}
+
+.quote b{transition:opacity 1s ease,transform 1s ease}
 @media(max-width:560px){.tabs{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute"><defs>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10.5" rx="3"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.7" r="1.2"/></symbol>
+<symbol id="i-unlock" viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10.5" rx="3"/><path d="M8 10.5V7.5a4 4 0 0 1 7.6-1.7"/><circle cx="12" cy="15.7" r="1.2"/></symbol>
+<symbol id="i-hour" viewBox="0 0 24 24"><path d="M6 3h12M6 21h12M7 3c0 5 3 6 5 9-2 3-5 4-5 9M17 3c0 5-3 6-5 9 2 3 5 4 5 9"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4-6.5 8-6.5s7 2 8 6.5"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+</defs></svg>
+<div class="cdx"><span>C</span><span>D</span><span>X</span></div>
+<div class="blobs"><i></i><i></i><i></i></div><div class="fade top"></div><div class="fade bot"></div>
 
 <!-- ACCUEIL -->
 <section id="accueil" class="page active"><div class="box">
@@ -117,7 +188,7 @@ textarea{min-height:100px;resize:vertical}
 
 <!-- ATTENTE -->
 <section id="attente" class="page"><div class="box">
-<div class="hg">⌛</div>
+<div class="hg"><svg class="ic xl"><use href="#i-hour"/></svg></div>
 <div class="small"><img src="hes/hes3.jpg" onerror="this.onerror=null;this.src='hes/hes3.JPG'" alt=""></div>
 <div class="tag">STATUT DE LA DEMANDE</div><h2>En attente</h2>
 <p style="color:var(--mut)">Votre demande a été transmise à la centrale.</p>
@@ -128,7 +199,7 @@ textarea{min-height:100px;resize:vertical}
 
 <!-- CONNEXION ELEVE -->
 <section id="connexion" class="page"><div class="box">
-<div class="lock">◈</div><h2>Espace élève</h2>
+<div class="lock"><svg class="ic xl"><use href="#i-user"/></svg></div><h2>Espace élève</h2>
 <p style="color:var(--mut);margin-bottom:16px">Entrez votre identifiant CDX.</p>
 <input id="idc" placeholder="CDX1234" autocapitalize="characters">
 <button class="btn main" id="cbtn" onclick="connexionEleve()">Accéder à mon espace</button>
@@ -151,7 +222,7 @@ textarea{min-height:100px;resize:vertical}
 
 <!-- ADMIN LOGIN -->
 <section id="adminlogin" class="page"><div class="box">
-<div class="lock" id="serrure">🔒</div><div class="tag">ZONE RÉSERVÉE</div><h2>Centrale</h2>
+<div class="lock" id="serrure"><svg class="ic xl"><use href="#i-lock"/></svg></div><div class="tag">ZONE RÉSERVÉE</div><h2>Centrale</h2>
 <p style="color:var(--mut);margin-bottom:16px">Accès réservé aux administrateurs.</p>
 <input id="code" type="password" placeholder="Code d'accès">
 <button class="btn main" onclick="connexionAdmin()">Déverrouiller</button>
@@ -193,7 +264,7 @@ textarea{min-height:100px;resize:vertical}
 <div id="modal" class="modal"><div class="mbox">
 <button onclick="fermer()" style="float:right;background:none;border:0;color:#fff;font-size:28px">×</button>
 <div class="tag">DOSSIER ÉLÈVE</div><h2 id="m-nom">NOM</h2><div id="m-infos"></div>
-<div class="acts"><button class="btn no" onclick="rejeter()">✕ Rejeter</button><button class="btn yes" onclick="ouvrirValid()">✓ Approuver</button></div>
+<div class="acts"><button class="btn no" onclick="rejeter()"><svg class="ic "><use href="#i-x"/></svg> Rejeter</button><button class="btn yes" onclick="ouvrirValid()"><svg class="ic "><use href="#i-check"/></svg> Approuver</button></div>
 </div></div>
 
 <div id="notice" class="notice" style="display:none">Mode test : base non configurée, les données restent sur cet appareil. Colle ta config Firebase dans FIREBASE_CONFIG.</div>
@@ -247,7 +318,7 @@ const $ = id => document.getElementById(id);
 const esc = t => { const d = document.createElement("div"); d.textContent = t ?? ""; return d.innerHTML; };
 function go(id) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
-  $(id).classList.add("active"); scrollTo(0, 0);
+  $(id).classList.add("active"); scrollTo(0, 0); animerCitation($(id));
 }
 let tmp = {}, toutes = [], courant = null, niveau = "", tentatives = 3, ongletActif = "dem";
 
@@ -302,7 +373,7 @@ function connexionAdmin() {
   if (tentatives <= 0) { m.className = "msg err"; m.textContent = "Accès bloqué. Rechargez la page."; return; }
   if (code === CODE_PRINCIPAL || code === CODE_ADMIN) {
     niveau = code === CODE_PRINCIPAL ? "principal" : "admin";
-    $("serrure").textContent = "🔓"; m.className = "msg good"; m.textContent = "Accès autorisé.";
+    $("serrure").innerHTML = '<svg class="ic xl"><use href="#i-unlock"/></svg>'; m.className = "msg good"; m.textContent = "Accès autorisé.";
     setTimeout(ouvrirCentrale, 600); return;
   }
   tentatives--; m.className = "msg err"; m.textContent = "Code erroné.";
@@ -312,7 +383,7 @@ function connexionAdmin() {
 function ouvrirCentrale() {
   $("atype").textContent = niveau === "principal" ? "ADMIN PRINCIPAL" : "ADMIN";
   $("tab-adm").style.display = niveau === "principal" ? "block" : "none";
-  $("code").value = ""; $("serrure").textContent = "🔒"; $("amsg").textContent = "";
+  $("code").value = ""; $("serrure").innerHTML = '<svg class="ic xl"><use href="#i-lock"/></svg>'; $("amsg").textContent = "";
   dbListen(l => { toutes = l.sort((a, b) => (a.date || 0) - (b.date || 0)); rendre(); });
   go("admin"); onglet("dem");
 }
@@ -331,7 +402,7 @@ function rendre() {
     c.innerHTML = l.length ? l.map(d => `<div class="req"><div class="row"><h3>${esc(d.nom)}</h3><span class="rid">${esc(d.id)}</span></div>
       <div class="meta">Classe : <b>${esc(d.classe)}</b><br>Rang : <b>${esc(d.rangClasse)}</b><br>Poste : <b>${esc(d.poste)}</b></div>
       <button class="btn out" onclick="ouvrirDemande('${esc(d.id)}')">Ouvrir le dossier →</button></div>`).join("")
-      : `<div class="empty"><strong style="font-size:28px">✓</strong><p>Aucune demande en attente</p></div>`;
+      : `<div class="empty"><strong style="font-size:34px;color:var(--ok)"><svg class="ic "><use href="#i-check"/></svg></strong><p>Aucune demande en attente</p></div>`;
   } else if (ongletActif === "arc") {
     const l = f("approuve");
     c.innerHTML = l.length ? l.map(d => `<div class="done"><div class="row"><b>${esc(d.nom)}</b><span class="rid">${esc(d.id)}</span></div>
@@ -374,6 +445,31 @@ async function valider() {
   } catch (e) { $("vmsg").textContent = "Erreur : " + e.message; }
   b.disabled = false;
 }
+</script>
+<script>
+document.addEventListener("click",e=>{const b=e.target.closest(".btn");if(!b)return;const r=b.getBoundingClientRect(),d=Math.max(r.width,r.height),x=document.createElement("span");x.className="rp";x.style.cssText=`width:${d}px;height:${d}px;left:${e.clientX-r.left-d/2}px;top:${e.clientY-r.top-d/2}px`;b.appendChild(x);setTimeout(()=>x.remove(),600)});
+</script>
+<script>
+addEventListener("scroll",()=>{const c=document.querySelector(".cdx");c.style.transform=`translate(-50%,calc(-50% - ${scrollY*.12}px))`},{passive:true});
+</script>
+<script>
+function animerCitation(page){
+  const calme=matchMedia("(prefers-reduced-motion:reduce)").matches;
+  page.querySelectorAll(".quote").forEach(q=>{
+    const b=q.querySelector("b"),n=q.firstChild;
+    if(!q.dataset.t)q.dataset.t=n.textContent.trim();
+    const t=q.dataset.t;clearInterval(q._i);clearTimeout(q._d);
+    if(calme){n.textContent=t;return}
+    n.textContent="";b.style.opacity=0;b.style.transform="translateY(10px)";
+    q._d=setTimeout(()=>{let i=0;
+      q._i=setInterval(()=>{
+        i++;n.textContent=t.slice(0,i)+(i<t.length?"\u258C":"");
+        if(i>=t.length){clearInterval(q._i);b.style.opacity=1;b.style.transform="none"}
+      },38);
+    },650);
+  });
+}
+animerCitation(document.getElementById("accueil"));
 </script>
 </body>
 </html>
