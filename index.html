@@ -68,6 +68,7 @@ textarea{min-height:100px;resize:vertical}
 .acts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}.acts .btn{margin:0}
 .sel{margin:16px 0;padding:15px;border-radius:13px;background:rgba(0,234,255,.05);border:1px solid rgba(0,234,255,.25)}.sel span{font-size:10px;color:var(--c)}.sel strong{display:block;margin-top:5px;font-size:20px}
 .notice{position:fixed;left:0;right:0;bottom:0;z-index:99;padding:10px 14px;background:#5b3b00;color:#ffe3a3;font-size:12px;text-align:center}
+.shop{display:block;margin-top:22px;color:#6f86a6;font-size:12px;text-decoration:none;opacity:.8}.shop:hover{color:var(--c);opacity:1}
 @media(max-width:560px){.tabs{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important}}
 </style>
@@ -82,6 +83,7 @@ textarea{min-height:100px;resize:vertical}
 <button class="btn main" onclick="go('ins1')">S'inscrire →</button>
 <button class="btn out" onclick="go('connexion')">Se connecter</button>
 <button class="btn adm" onclick="go('adminlogin')">Connexion administrateur</button>
+<a class="shop" href="https://hes-shop.vercel.app/" target="_blank" rel="noopener">Boutique He's</a>
 </div></section>
 
 <!-- INSCRIPTION 1 -->
@@ -204,12 +206,12 @@ textarea{min-height:100px;resize:vertical}
 // 2) Ajoute une appli Web, copie la config ici
 // 3) Crée une base Firestore (mode test) puis publie ce fichier
 const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyCywiLjrwVSZ8yQhk4CcywcfhOYDYADlaE",
+  authDomain: "cdx-h-es.firebaseapp.com",
+  projectId: "cdx-h-es",
+  storageBucket: "cdx-h-es.firebasestorage.app",
+  messagingSenderId: "1004789946133",
+  appId: "1:1004789946133:web:e619b89d9bc2714d7bbb1c"
 };
 const CODE_PRINCIPAL = "JUNIOR01";
 const CODE_ADMIN = "JUNIOR";
