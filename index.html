@@ -294,8 +294,6 @@ body{zoom:.88}
 
 <div id="notice" class="notice" style="display:none">Mode test : base non configurée, les données restent sur cet appareil. Colle ta config Firebase dans FIREBASE_CONFIG.</div>
 
-<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 /* ============ CONFIGURATION ============ */
 // 1) Crée un projet sur console.firebase.google.com (gratuit)
@@ -312,50 +310,95 @@ const FIREBASE_CONFIG = {
 const CODE_PRINCIPAL = "JUNIOR01";
 const CODE_ADMIN = "JUNIOR";
 
-/* ============ COUCHE DONNÉES ============ */
-const configure = !!FIREBASE_CONFIG.projectId;
-const MSG_PANNE = "Base de données injoignable. Vérifie ta connexion internet, puis recharge la page.";
-let panne = false, enLigne = false, col = null, initErreur = "";
-if (configure) {
-  if (typeof firebase === "undefined") panne = true;
-  else {
-    try {
-      firebase.initializeApp(FIREBASE_CONFIG);
-      // Long polling : évite l'erreur "client is offline" sur les réseaux mobiles qui bloquent le flux temps réel
-      try { firebase.firestore().settings({ experimentalForceLongPolling: true }); } catch (e) { console.warn("settings:", e.message); }
-      col = firebase.firestore().collection("demandes");
-      enLigne = true;
-    } catch (e) { panne = true; initErreur = e.message; }
-  }
+/* ============ COUCHE DONNÉES (API REST Firestore, sans SDK) ============ */
+const MSG_PANNE = "Base de données injoignable. Vérifie ta connexion internet, puis réessaie.";
+const enLigne = !!FIREBASE_CONFIG.projectId, panne = false;
+const RACINE = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_CONFIG.projectId + "/databases/(default)/documents";
+if (!enLigne) $notice();
+function $notice() { const n = document.getElementById("notice"); n.style.display = "block"; }
+
+function enc(v) {
+  if (typeof v === "number") return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
+  if (typeof v === "boolean") return { booleanValue: v };
+  if (v == null) return { nullValue: null };
+  return { stringValue: String(v) };
 }
-if (!enLigne) {
-  const n = document.getElementById("notice");
-  if (panne) { n.textContent = MSG_PANNE + (initErreur ? " (" + initErreur + ")" : ""); n.style.background = "#6b1020"; n.style.color = "#ffd0d8"; }
-  n.style.display = "block";
+function dec(v) {
+  if ("stringValue" in v) return v.stringValue;
+  if ("integerValue" in v) return Number(v.integerValue);
+  if ("doubleValue" in v) return v.doubleValue;
+  if ("booleanValue" in v) return v.booleanValue;
+  return null;
+}
+const encDoc = o => { const f = {}; for (const k in o) f[k] = enc(o[k]); return { fields: f }; };
+const decDoc = d => { const o = {}; for (const k in (d.fields || {})) o[k] = dec(d.fields[k]); return o; };
+
+async function api(chemin, opt) {
+  const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const sep = chemin.includes("?") ? "&" : "?";
+    const r = await fetch(RACINE + chemin + sep + "key=" + FIREBASE_CONFIG.apiKey, { ...opt, signal: ctrl.signal, headers: { "Content-Type": "application/json" } });
+    if (r.status === 404) return null;
+    const j = await r.json();
+    if (!r.ok) throw new Error((j.error && j.error.message) || ("Erreur HTTP " + r.status));
+    return j;
+  } catch (e) {
+    if (e.name === "AbortError" || e instanceof TypeError) throw new Error(MSG_PANNE);
+    throw e;
+  } finally { clearTimeout(t); }
+}
+async function listAll(coll, extra) {
+  let out = [], tok = "";
+  do {
+    const j = await api("/" + coll + "?pageSize=300" + (extra || "") + (tok ? "&pageToken=" + encodeURIComponent(tok) : ""));
+    if (j && j.documents) out.push(...j.documents.map(decDoc));
+    tok = j && j.nextPageToken;
+  } while (tok);
+  return out;
+}
+function poll(fn, ms, onErr) {
+  let on = true, busy = false;
+  const run = async () => { if (!on || busy) return; busy = true; try { await fn(); } catch (e) { if (onErr) onErr(e); } busy = false; };
+  run(); const t = setInterval(run, ms);
+  return { stop() { on = false; clearInterval(t); }, run };
 }
 
 const LS = "classroom_demandes";
 const lireLocal = () => { try { return JSON.parse(localStorage.getItem(LS)) || []; } catch { return []; } };
+let ecoute = null, stop = null, pokeListe = null, avert = false;
 async function dbGet(id) {
-  if (panne) throw new Error(MSG_PANNE);
-  if (enLigne) { const s = await col.doc(id).get(); return s.exists ? s.data() : null; }
+  if (enLigne) { const j = await api("/demandes/" + id); return j ? decDoc(j) : null; }
   return lireLocal().find(d => d.id === id) || null;
 }
 async function dbSet(d) {
-  if (panne) throw new Error(MSG_PANNE);
-  if (enLigne) return col.doc(d.id).set(d);
+  if (enLigne) { await api("/demandes/" + d.id, { method: "PATCH", body: JSON.stringify(encDoc(d)) }); if (pokeListe) pokeListe(); return; }
   const l = lireLocal().filter(x => x.id !== d.id); l.push(d);
   localStorage.setItem(LS, JSON.stringify(l));
   if (ecoute) ecoute(l);
 }
-let ecoute = null, stop = null;
-function dbListen(cb) {
-  if (panne) { alert(MSG_PANNE); cb([]); return; }
-  ecoute = cb;
-  if (enLigne) stop = col.onSnapshot(s => cb(s.docs.map(x => x.data())), e => alert("Erreur base : " + e.message));
-  else cb(lireLocal());
+async function dbInc(id, champ, delta) {
+  const doc = "projects/" + FIREBASE_CONFIG.projectId + "/databases/(default)/documents/demandes/" + id;
+  await api(":commit", { method: "POST", body: JSON.stringify({ writes: [{ transform: { document: doc, fieldTransforms: [{ fieldPath: champ, increment: { integerValue: String(delta) } }] } }] }) });
+  if (pokeListe) pokeListe();
 }
-function dbStop() { if (stop) stop(); stop = null; ecoute = null; }
+function dbListen(cb) {
+  ecoute = cb;
+  if (!enLigne) { cb(lireLocal()); return; }
+  avert = false;
+  const p = poll(async () => cb(await listAll("demandes")), 3000, e => { if (!avert) { avert = true; alert(e.message); } });
+  stop = p.stop; pokeListe = p.run;
+}
+function dbStop() { if (stop) stop(); stop = null; ecoute = null; pokeListe = null; }
+let chatRefresh = null;
+function dbChatListen(cb, onErr) {
+  const p = poll(async () => cb((await listAll("chat_admin", "&orderBy=date%20desc")).slice(0, 100).reverse()), 3000, onErr);
+  chatRefresh = p.run; return () => { p.stop(); chatRefresh = null; };
+}
+async function dbChatAdd(m) { await api("/chat_admin", { method: "POST", body: JSON.stringify(encDoc(m)) }); if (chatRefresh) chatRefresh(); }
+function dbDocListen(id, cb) {
+  const p = poll(async () => { const c = await dbGet(id); cb(c); }, 4000);
+  return p.stop;
+}
 
 /* ============ OUTILS ============ */
 function $(id) { return document.getElementById(id); }
@@ -545,8 +588,7 @@ function ouvrirChat(){
     if(bas)box.scrollTop=box.scrollHeight;
   };
   if(enLigne){
-    chatStop=firebase.firestore().collection("chat_admin").orderBy("date","desc").limit(100)
-      .onSnapshot(s=>aff(s.docs.map(x=>x.data()).reverse()),e=>aff(null,e));
+    chatStop=dbChatListen(l=>aff(l),e=>aff(null,e));
   }else{chatCb=aff;aff(lireChat())}
 }
 function validerPseudo(){
@@ -558,7 +600,7 @@ async function envoyerChat(){
   const i=$("cin"),t=i.value.trim();if(!t)return;
   const m={nom:pseudo,role:niveau,texte:t,date:Date.now()};i.value="";
   try{
-    if(enLigne)await firebase.firestore().collection("chat_admin").add(m);
+    if(enLigne)await dbChatAdd(m);
     else{const l=lireChat();l.push(m);localStorage.setItem(CL,JSON.stringify(l));if(chatCb)chatCb(l)}
   }catch(e){alert("Message non envoyé : "+e.message);i.value=t}
 }
@@ -573,7 +615,7 @@ async function ajuster(id,signe){
   if(!v||v<=0)return alert("Entre un montant supérieur à 0.");
   if((d[champ]||0)+signe*v<0)return alert("Les points ne peuvent pas passer sous 0.");
   try{
-    if(enLigne)await col.doc(id).update({[champ]:firebase.firestore.FieldValue.increment(signe*v)});
+    if(enLigne)await dbInc(id,champ,signe*v);
     else await dbSet({...d,[champ]:(d[champ]||0)+signe*v});
     $("n-"+id).value="";
   }catch(e){alert("Erreur : "+e.message)}
@@ -584,7 +626,7 @@ function afficherEleve(c){
 }
 function suivreEleve(id){
   if(stopEleve)stopEleve();stopEleve=null;
-  if(enLigne)stopEleve=col.doc(id).onSnapshot(sn=>{const c=sn.data();if(c&&c.statut==="approuve")afficherEleve(c)});
+  if(enLigne)stopEleve=dbDocListen(id,c=>{if(c&&c.statut==="approuve")afficherEleve(c)});
 }
 </script>
 </body>
