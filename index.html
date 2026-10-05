@@ -151,6 +151,9 @@ body{zoom:.88}
 </style>
 </head>
 <body>
+<script>
+addEventListener("error",function(e){var b=document.getElementById("errbar");if(!b){b=document.createElement("div");b.id="errbar";b.style.cssText="position:fixed;top:0;left:0;right:0;z-index:999;padding:8px 12px;background:#6b1020;color:#ffd0d8;font:12px/1.4 system-ui;text-align:center";document.body.appendChild(b)}b.textContent="Erreur : "+(e.message||"inconnue")});
+</script>
 <svg width="0" height="0" style="position:absolute"><defs>
 <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10.5" rx="3"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.7" r="1.2"/></symbol>
 <symbol id="i-unlock" viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10.5" rx="3"/><path d="M8 10.5V7.5a4 4 0 0 1 7.6-1.7"/><circle cx="12" cy="15.7" r="1.2"/></symbol>
@@ -307,19 +310,23 @@ const CODE_ADMIN = "JUNIOR";
 
 /* ============ COUCHE DONNÉES ============ */
 const configure = !!FIREBASE_CONFIG.projectId;
-const panne = configure && typeof firebase === "undefined";
-const enLigne = configure && !panne;
 const MSG_PANNE = "Base de données injoignable. Vérifie ta connexion internet, puis recharge la page.";
-let col = null;
-if (enLigne) {
-  firebase.initializeApp(FIREBASE_CONFIG);
-  // Long polling : évite l'erreur "client is offline" sur les réseaux mobiles qui bloquent le flux temps réel
-  firebase.firestore().settings({ experimentalForceLongPolling: true, useFetchStreams: false, merge: true });
-  col = firebase.firestore().collection("demandes");
+let panne = false, enLigne = false, col = null, initErreur = "";
+if (configure) {
+  if (typeof firebase === "undefined") panne = true;
+  else {
+    try {
+      firebase.initializeApp(FIREBASE_CONFIG);
+      // Long polling : évite l'erreur "client is offline" sur les réseaux mobiles qui bloquent le flux temps réel
+      try { firebase.firestore().settings({ experimentalForceLongPolling: true }); } catch (e) { console.warn("settings:", e.message); }
+      col = firebase.firestore().collection("demandes");
+      enLigne = true;
+    } catch (e) { panne = true; initErreur = e.message; }
+  }
 }
-else {
+if (!enLigne) {
   const n = document.getElementById("notice");
-  if (panne) { n.textContent = MSG_PANNE; n.style.background = "#6b1020"; n.style.color = "#ffd0d8"; }
+  if (panne) { n.textContent = MSG_PANNE + (initErreur ? " (" + initErreur + ")" : ""); n.style.background = "#6b1020"; n.style.color = "#ffd0d8"; }
   n.style.display = "block";
 }
 
@@ -347,8 +354,8 @@ function dbListen(cb) {
 function dbStop() { if (stop) stop(); stop = null; ecoute = null; }
 
 /* ============ OUTILS ============ */
-const $ = id => document.getElementById(id);
-const esc = t => { const d = document.createElement("div"); d.textContent = t ?? ""; return d.innerHTML; };
+function $(id) { return document.getElementById(id); }
+function esc(t) { const d = document.createElement("div"); d.textContent = t ?? ""; return d.innerHTML; }
 function go(id) {
   document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
   $(id).classList.add("active"); scrollTo(0, 0); animerCitation($(id));
