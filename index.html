@@ -306,18 +306,32 @@ const CODE_PRINCIPAL = "JUNIOR01";
 const CODE_ADMIN = "JUNIOR";
 
 /* ============ COUCHE DONNÉES ============ */
-const enLigne = !!FIREBASE_CONFIG.projectId;
+const configure = !!FIREBASE_CONFIG.projectId;
+const panne = configure && typeof firebase === "undefined";
+const enLigne = configure && !panne;
+const MSG_PANNE = "Base de données injoignable. Vérifie ta connexion internet, puis recharge la page.";
 let col = null;
-if (enLigne) { firebase.initializeApp(FIREBASE_CONFIG); col = firebase.firestore().collection("demandes"); }
-else document.getElementById("notice").style.display = "block";
+if (enLigne) {
+  firebase.initializeApp(FIREBASE_CONFIG);
+  // Long polling : évite l'erreur "client is offline" sur les réseaux mobiles qui bloquent le flux temps réel
+  firebase.firestore().settings({ experimentalForceLongPolling: true, useFetchStreams: false, merge: true });
+  col = firebase.firestore().collection("demandes");
+}
+else {
+  const n = document.getElementById("notice");
+  if (panne) { n.textContent = MSG_PANNE; n.style.background = "#6b1020"; n.style.color = "#ffd0d8"; }
+  n.style.display = "block";
+}
 
 const LS = "classroom_demandes";
 const lireLocal = () => { try { return JSON.parse(localStorage.getItem(LS)) || []; } catch { return []; } };
 async function dbGet(id) {
+  if (panne) throw new Error(MSG_PANNE);
   if (enLigne) { const s = await col.doc(id).get(); return s.exists ? s.data() : null; }
   return lireLocal().find(d => d.id === id) || null;
 }
 async function dbSet(d) {
+  if (panne) throw new Error(MSG_PANNE);
   if (enLigne) return col.doc(d.id).set(d);
   const l = lireLocal().filter(x => x.id !== d.id); l.push(d);
   localStorage.setItem(LS, JSON.stringify(l));
@@ -325,6 +339,7 @@ async function dbSet(d) {
 }
 let ecoute = null, stop = null;
 function dbListen(cb) {
+  if (panne) { alert(MSG_PANNE); cb([]); return; }
   ecoute = cb;
   if (enLigne) stop = col.onSnapshot(s => cb(s.docs.map(x => x.data())), e => alert("Erreur base : " + e.message));
   else cb(lireLocal());
@@ -501,6 +516,7 @@ const lireChat=()=>{try{return JSON.parse(localStorage.getItem(CL))||[]}catch{re
 function chatStopAll(){if(chatStop)chatStop();chatStop=null;chatCb=null}
 function ouvrirChat(){
   chatStopAll();
+  if(panne){$("content").innerHTML=`<div class="empty err">${MSG_PANNE}</div>`;return}
   const c=$("content");
   if(!pseudo){
     c.innerHTML=`<div class="acard"><div class="tag">CHAT DES ADMINISTRATEURS</div><h3 style="margin:6px 0">Choisis ton pseudo</h3>
