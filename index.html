@@ -152,7 +152,11 @@ body{zoom:.88}
 </head>
 <body>
 <script>
-addEventListener("error",function(e){var b=document.getElementById("errbar");if(!b){b=document.createElement("div");b.id="errbar";b.style.cssText="position:fixed;top:0;left:0;right:0;z-index:999;padding:8px 12px;background:#6b1020;color:#ffd0d8;font:12px/1.4 system-ui;text-align:center";document.body.appendChild(b)}b.textContent="Erreur : "+(e.message||"inconnue")});
+(function(){
+  function show(t){var b=document.getElementById("errbar");if(!b){b=document.createElement("div");b.id="errbar";b.onclick=function(){b.remove()};b.style.cssText="position:fixed;top:0;left:0;right:0;z-index:999;padding:8px 12px;background:#6b1020;color:#ffd0d8;font:12px/1.4 system-ui;text-align:center";document.body.appendChild(b)}b.textContent="Erreur : "+t+" (touche pour fermer)"}
+  addEventListener("error",function(e){var w=(e.filename||"").split("/").pop();show((e.message||"inconnue")+(w?" ["+w+":"+e.lineno+"]":""))});
+  addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesse : "+((r&&r.message)||r))});
+})();
 </script>
 <svg width="0" height="0" style="position:absolute"><defs>
 <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="10.5" rx="3"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.7" r="1.2"/></symbol>
@@ -290,8 +294,8 @@ addEventListener("error",function(e){var b=document.getElementById("errbar");if(
 
 <div id="notice" class="notice" style="display:none">Mode test : base non configurée, les données restent sur cet appareil. Colle ta config Firebase dans FIREBASE_CONFIG.</div>
 
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script crossorigin="anonymous" src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 /* ============ CONFIGURATION ============ */
 // 1) Crée un projet sur console.firebase.google.com (gratuit)
