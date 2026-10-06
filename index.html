@@ -154,7 +154,7 @@ body{zoom:.88}
 <script>
 (function(){
   function show(t){var b=document.getElementById("errbar");if(!b){b=document.createElement("div");b.id="errbar";b.onclick=function(){b.remove()};b.style.cssText="position:fixed;top:0;left:0;right:0;z-index:999;padding:8px 12px;background:#6b1020;color:#ffd0d8;font:12px/1.4 system-ui;text-align:center";document.body.appendChild(b)}b.textContent="Erreur : "+t+" (touche pour fermer)"}
-  addEventListener("error",function(e){var w=(e.filename||"").split("/").pop();show((e.message||"inconnue")+(w?" ["+w+":"+e.lineno+"]":""))});
+  addEventListener("error",function(e){if(e.message==="Script error."&&!e.filename)return;var w=(e.filename||"").split("/").pop();show((e.message||"inconnue")+(w?" ["+w+":"+e.lineno+"]":""))});
   addEventListener("unhandledrejection",function(e){var r=e.reason;show("promesse : "+((r&&r.message)||r))});
 })();
 </script>
@@ -292,113 +292,47 @@ body{zoom:.88}
 <div class="acts"><button class="btn no" onclick="rejeter()"><svg class="ic "><use href="#i-x"/></svg> Rejeter</button><button class="btn yes" onclick="ouvrirValid()"><svg class="ic "><use href="#i-check"/></svg> Approuver</button></div>
 </div></div>
 
-<div id="notice" class="notice" style="display:none">Mode test : base non configurée, les données restent sur cet appareil. Colle ta config Firebase dans FIREBASE_CONFIG.</div>
-
 <script>
-/* ============ CONFIGURATION ============ */
-// 1) Crée un projet sur console.firebase.google.com (gratuit)
-// 2) Ajoute une appli Web, copie la config ici
-// 3) Crée une base Firestore (mode test) puis publie ce fichier
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyCywiLjrwVSZ8yQhk4CcywcfhOYDYADlaE",
-  authDomain: "cdx-h-es.firebaseapp.com",
-  projectId: "cdx-h-es",
-  storageBucket: "cdx-h-es.firebasestorage.app",
-  messagingSenderId: "1004789946133",
-  appId: "1:1004789946133:web:e619b89d9bc2714d7bbb1c"
-};
-const CODE_PRINCIPAL = "JUNIOR01";
-const CODE_ADMIN = "JUNIOR";
-
-/* ============ COUCHE DONNÉES (API REST Firestore, sans SDK) ============ */
-const MSG_PANNE = "Base de données injoignable. Vérifie ta connexion internet, puis réessaie.";
-const enLigne = !!FIREBASE_CONFIG.projectId, panne = false;
-const RACINE = "https://firestore.googleapis.com/v1/projects/" + FIREBASE_CONFIG.projectId + "/databases/(default)/documents";
-if (!enLigne) $notice();
-function $notice() { const n = document.getElementById("notice"); n.style.display = "block"; }
-
-function enc(v) {
-  if (typeof v === "number") return Number.isInteger(v) ? { integerValue: String(v) } : { doubleValue: v };
-  if (typeof v === "boolean") return { booleanValue: v };
-  if (v == null) return { nullValue: null };
-  return { stringValue: String(v) };
-}
-function dec(v) {
-  if ("stringValue" in v) return v.stringValue;
-  if ("integerValue" in v) return Number(v.integerValue);
-  if ("doubleValue" in v) return v.doubleValue;
-  if ("booleanValue" in v) return v.booleanValue;
-  return null;
-}
-const encDoc = o => { const f = {}; for (const k in o) f[k] = enc(o[k]); return { fields: f }; };
-const decDoc = d => { const o = {}; for (const k in (d.fields || {})) o[k] = dec(d.fields[k]); return o; };
-
-async function api(chemin, opt) {
+/* ============ COUCHE DONNÉES (API Vercel) ============ */
+const MSG_PANNE = "Serveur injoignable. Vérifie ta connexion internet, puis réessaie.";
+const enLigne = true, panne = false;
+let codeAdmin = "";
+async function call(url, body) {
   const ctrl = new AbortController(), t = setTimeout(() => ctrl.abort(), 20000);
   try {
-    const sep = chemin.includes("?") ? "&" : "?";
-    const r = await fetch(RACINE + chemin + sep + "key=" + FIREBASE_CONFIG.apiKey, { ...opt, signal: ctrl.signal, headers: { "Content-Type": "application/json" } });
-    if (r.status === 404) return null;
-    const j = await r.json();
-    if (!r.ok) throw new Error((j.error && j.error.message) || ("Erreur HTTP " + r.status));
+    const r = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body), signal: ctrl.signal });
+    let j = {}; try { j = await r.json(); } catch {}
+    if (!r.ok) { const e = new Error(j.error || ("Erreur " + r.status)); e.code = r.status; throw e; }
     return j;
   } catch (e) {
     if (e.name === "AbortError" || e instanceof TypeError) throw new Error(MSG_PANNE);
     throw e;
   } finally { clearTimeout(t); }
 }
-async function listAll(coll, extra) {
-  let out = [], tok = "";
-  do {
-    const j = await api("/" + coll + "?pageSize=300" + (extra || "") + (tok ? "&pageToken=" + encodeURIComponent(tok) : ""));
-    if (j && j.documents) out.push(...j.documents.map(decDoc));
-    tok = j && j.nextPageToken;
-  } while (tok);
-  return out;
-}
+const pub = (action, p) => call("/api/public", { action, ...p });
+const adm = (action, p) => call("/api/admin", { action, code: codeAdmin, ...p });
+// Rafraîchissement régulier, en pause quand l'écran est caché (économise la base gratuite)
 function poll(fn, ms, onErr) {
   let on = true, busy = false;
-  const run = async () => { if (!on || busy) return; busy = true; try { await fn(); } catch (e) { if (onErr) onErr(e); } busy = false; };
+  const run = async () => { if (!on || busy || document.hidden) return; busy = true; try { await fn(); } catch (e) { if (onErr) onErr(e); } busy = false; };
   run(); const t = setInterval(run, ms);
   return { stop() { on = false; clearInterval(t); }, run };
 }
-
-const LS = "classroom_demandes";
-const lireLocal = () => { try { return JSON.parse(localStorage.getItem(LS)) || []; } catch { return []; } };
-let ecoute = null, stop = null, pokeListe = null, avert = false;
-async function dbGet(id) {
-  if (enLigne) { const j = await api("/demandes/" + id); return j ? decDoc(j) : null; }
-  return lireLocal().find(d => d.id === id) || null;
-}
-async function dbSet(d) {
-  if (enLigne) { await api("/demandes/" + d.id, { method: "PATCH", body: JSON.stringify(encDoc(d)) }); if (pokeListe) pokeListe(); return; }
-  const l = lireLocal().filter(x => x.id !== d.id); l.push(d);
-  localStorage.setItem(LS, JSON.stringify(l));
-  if (ecoute) ecoute(l);
-}
-async function dbInc(id, champ, delta) {
-  const doc = "projects/" + FIREBASE_CONFIG.projectId + "/databases/(default)/documents/demandes/" + id;
-  await api(":commit", { method: "POST", body: JSON.stringify({ writes: [{ transform: { document: doc, fieldTransforms: [{ fieldPath: champ, increment: { integerValue: String(delta) } }] } }] }) });
-  if (pokeListe) pokeListe();
-}
+let stop = null, pokeListe = null, avert = false, chatRefresh = null;
+const refreshListe = () => { if (pokeListe) pokeListe(); };
+async function dbGet(id) { return (await pub("student", { id })).c; }
 function dbListen(cb) {
-  ecoute = cb;
-  if (!enLigne) { cb(lireLocal()); return; }
   avert = false;
-  const p = poll(async () => cb(await listAll("demandes")), 3000, e => { if (!avert) { avert = true; alert(e.message); } });
+  const p = poll(async () => cb((await adm("list")).demandes), 8000, e => { if (!avert) { avert = true; alert(e.message); } });
   stop = p.stop; pokeListe = p.run;
 }
-function dbStop() { if (stop) stop(); stop = null; ecoute = null; pokeListe = null; }
-let chatRefresh = null;
+function dbStop() { if (stop) stop(); stop = null; pokeListe = null; }
 function dbChatListen(cb, onErr) {
-  const p = poll(async () => cb((await listAll("chat_admin", "&orderBy=date%20desc")).slice(0, 100).reverse()), 3000, onErr);
+  const p = poll(async () => cb((await adm("chat_list")).messages), 5000, onErr);
   chatRefresh = p.run; return () => { p.stop(); chatRefresh = null; };
 }
-async function dbChatAdd(m) { await api("/chat_admin", { method: "POST", body: JSON.stringify(encDoc(m)) }); if (chatRefresh) chatRefresh(); }
-function dbDocListen(id, cb) {
-  const p = poll(async () => { const c = await dbGet(id); cb(c); }, 4000);
-  return p.stop;
-}
+async function dbChatAdd(m) { await adm("chat_send", { nom: m.nom, texte: m.texte }); if (chatRefresh) chatRefresh(); }
+function dbDocListen(id, cb) { return poll(async () => cb(await dbGet(id)), 12000).stop; }
 
 /* ============ OUTILS ============ */
 function $(id) { return document.getElementById(id); }
@@ -426,10 +360,8 @@ function recap() {
 async function envoyer() {
   const b = $("sendbtn"); b.disabled = true; b.textContent = "Envoi en cours...";
   try {
-    let id;
-    do { id = "CDX" + Math.floor(1000 + Math.random() * 9000); } while (await dbGet(id));
-    await dbSet({ ...tmp, id, statut: "attente", pc: 0, pi: 0, aura: 0, rangIndividuel: 0, date: Date.now() });
-    $("monid").textContent = id; go("attente");
+    const r = await pub("register", { data: tmp });
+    $("monid").textContent = r.id; go("attente");
   } catch (e) { $("recapmsg").textContent = "Envoi impossible : " + e.message; }
   b.disabled = false; b.textContent = "Envoyer la demande";
 }
@@ -452,17 +384,22 @@ async function connexionEleve() {
 function quitterEleve() { if (stopEleve) stopEleve(); stopEleve = null; $("idc").value = ""; go("accueil"); }
 
 /* ============ ADMIN ============ */
-function connexionAdmin() {
+async function connexionAdmin() {
   const code = $("code").value.trim(), m = $("amsg");
   if (tentatives <= 0) { m.className = "msg err"; m.textContent = "Accès bloqué. Rechargez la page."; return; }
-  if (code === CODE_PRINCIPAL || code === CODE_ADMIN) {
-    niveau = code === CODE_PRINCIPAL ? "principal" : "admin";
+  if (!code) return;
+  m.className = "msg"; m.textContent = "Vérification..."; codeAdmin = code;
+  try {
+    const r = await adm("login"); niveau = r.role;
     $("serrure").innerHTML = '<svg class="ic xl"><use href="#i-unlock"/></svg>'; m.className = "msg good"; m.textContent = "Accès autorisé.";
-    setTimeout(ouvrirCentrale, 600); return;
+    setTimeout(ouvrirCentrale, 600);
+  } catch (e) {
+    codeAdmin = ""; m.className = "msg err";
+    if (e.code === 401) {
+      tentatives--; m.textContent = "Code erroné."; $("tent").textContent = "Tentatives restantes : " + tentatives;
+      navigator.vibrate && navigator.vibrate([200, 100, 300]);
+    } else m.textContent = e.message;
   }
-  tentatives--; m.className = "msg err"; m.textContent = "Code erroné.";
-  $("tent").textContent = "Tentatives restantes : " + tentatives;
-  navigator.vibrate && navigator.vibrate([200, 100, 300]);
 }
 function ouvrirCentrale() {
   $("atype").textContent = niveau === "principal" ? "ADMIN PRINCIPAL" : "ADMIN";
@@ -471,7 +408,7 @@ function ouvrirCentrale() {
   dbListen(l => { toutes = l.sort((a, b) => (a.date || 0) - (b.date || 0)); rendre(); });
   go("admin"); onglet("dem");
 }
-function quitterAdmin() { chatStopAll(); dbStop(); niveau = ""; go("accueil"); }
+function quitterAdmin() { chatStopAll(); dbStop(); niveau = ""; codeAdmin = ""; go("accueil"); }
 function onglet(t) {
   ongletActif = t;
   document.querySelectorAll(".tab").forEach(b => b.classList.toggle("on", b.dataset.t === t));
@@ -503,7 +440,7 @@ function rendre() {
   } else if (niveau === "principal") {
     c.innerHTML = `<div class="acard"><div class="tag">ADMIN PRINCIPAL</div><h3 style="margin:6px 0">Accès complet</h3>
       <p class="meta">Vous voyez toutes les demandes en direct, depuis n'importe quel appareil, grâce à la base partagée.</p></div>
-      <div class="acard"><b>Base de données</b><p class="meta">${enLigne ? "Connectée (Firebase Firestore)" : "Mode test local : non partagée"}</p></div>`;
+      <div class="acard"><b>Base de données</b><p class="meta">Connectée (base Vercel)</p></div>`;
   }
 }
 function ouvrirDemande(id) {
@@ -516,7 +453,7 @@ function ouvrirDemande(id) {
 function fermer() { $("modal").classList.remove("show"); }
 async function rejeter() {
   if (!courant) return;
-  try { await dbSet({ ...courant, statut: "rejete" }); fermer(); } catch (e) { alert("Erreur : " + e.message); }
+  try { await adm("decide", { id: courant.id, statut: "rejete" }); refreshListe(); fermer(); } catch (e) { alert("Erreur : " + e.message); }
 }
 function ouvrirValid(id) {
   if (id) courant = toutes.find(d => d.id === id);
@@ -531,7 +468,7 @@ async function valider() {
   if (["a-pc", "a-pi", "a-au", "a-ri"].some(k => v(k) === "") || !v("a-rc")) { $("vmsg").textContent = "Remplissez tous les champs."; return; }
   const b = $("vbtn"); b.disabled = true;
   try {
-    await dbSet({ ...courant, statut: "approuve", pc: +v("a-pc"), pi: +v("a-pi"), aura: +v("a-au"), rangClasse: v("a-rc"), rangIndividuel: +v("a-ri") });
+    await adm("approve", { id: courant.id, pc: +v("a-pc"), pi: +v("a-pi"), aura: +v("a-au"), rangClasse: v("a-rc"), rangIndividuel: +v("a-ri") }); refreshListe();
     alert("Élève approuvé. Son espace est accessible."); go("admin"); onglet("dem");
   } catch (e) { $("vmsg").textContent = "Erreur : " + e.message; }
   b.disabled = false;
@@ -582,14 +519,12 @@ function ouvrirChat(){
   <div class="chat-in"><input id="cin" maxlength="400" placeholder="Écrire un message..." onkeydown="if(event.key==='Enter')envoyerChat()"><button class="btn yes" onclick="envoyerChat()">Envoyer</button></div></div>`;
   const aff=(l,err)=>{
     const box=$("msgs");if(!box)return;
-    if(err){box.innerHTML=`<div class="empty err" style="border:0">Chat indisponible : ${esc(err.message)}<br>Vérifie les règles Firestore.</div>`;return}
+    if(err){box.innerHTML=`<div class="empty err" style="border:0">Chat indisponible : ${esc(err.message)}<br>Réessaie dans un instant.</div>`;return}
     const bas=box.scrollHeight-box.scrollTop-box.clientHeight<80||!box.dataset.ok;box.dataset.ok=1;
     box.innerHTML=l.length?l.map(m=>`<div class="m ${m.nom===pseudo?"me":""}"><small><b>${esc(m.nom)}</b>${m.role==="principal"?"<em>PRINCIPAL</em>":""}<span>${new Date(m.date).toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</span></small><p>${esc(m.texte)}</p></div>`).join(""):`<div class="empty" style="border:0">Aucun message. Écris le premier.</div>`;
     if(bas)box.scrollTop=box.scrollHeight;
   };
-  if(enLigne){
-    chatStop=dbChatListen(l=>aff(l),e=>aff(null,e));
-  }else{chatCb=aff;aff(lireChat())}
+  chatStop=dbChatListen(l=>aff(l),e=>aff(null,e));
 }
 function validerPseudo(){
   const v=$("pseudo").value.trim();if(!v)return alert("Entre un pseudo.");
@@ -600,8 +535,7 @@ async function envoyerChat(){
   const i=$("cin"),t=i.value.trim();if(!t)return;
   const m={nom:pseudo,role:niveau,texte:t,date:Date.now()};i.value="";
   try{
-    if(enLigne)await dbChatAdd(m);
-    else{const l=lireChat();l.push(m);localStorage.setItem(CL,JSON.stringify(l));if(chatCb)chatCb(l)}
+    await dbChatAdd(m);
   }catch(e){alert("Message non envoyé : "+e.message);i.value=t}
 }
 </script>
@@ -615,8 +549,7 @@ async function ajuster(id,signe){
   if(!v||v<=0)return alert("Entre un montant supérieur à 0.");
   if((d[champ]||0)+signe*v<0)return alert("Les points ne peuvent pas passer sous 0.");
   try{
-    if(enLigne)await dbInc(id,champ,signe*v);
-    else await dbSet({...d,[champ]:(d[champ]||0)+signe*v});
+    await adm("adjust",{id,champ,delta:signe*v});refreshListe();
     $("n-"+id).value="";
   }catch(e){alert("Erreur : "+e.message)}
 }
